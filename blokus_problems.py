@@ -49,15 +49,16 @@ class BlokusFillProblem(SearchProblem):
         """
         return len(actions)
 
-
-
 #####################################################
 # This portion is incomplete.  Time to write code!  #
 #####################################################
 class BlokusCornersProblem(SearchProblem):
+
     def __init__(self, board_w, board_h, piece_list, starting_point=(0, 0)):
+        self.board = Board(board_w, board_h, 1, piece_list, starting_point)
         self.expanded = 0
         "*** YOUR CODE HERE ***"
+        # todo if the starting position is not (0,0) rotate the board until it is?
 
     def get_start_state(self):
         """
@@ -66,8 +67,18 @@ class BlokusCornersProblem(SearchProblem):
         return self.board
 
     def is_goal_state(self, state):
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        """
+        checks whether all the corners have been filled in. By accessing the numpy array and its corner values then
+        checking to see whether any of those corner values have been filled
+        :param state: a numpy array representing the current state of the board
+        :return: False if any of the corners are still empty, otherwise True
+        """
+        corner_values = [state[0, 0], state[0, -1], state[-1, 0], state[-1, -1]]
+
+        if -1 in corner_values:
+            return False
+
+        return True
 
     def get_successors(self, state):
         """
