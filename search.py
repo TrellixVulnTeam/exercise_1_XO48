@@ -210,12 +210,6 @@ def breadth_first_search(problem):
     return []
 
 
-
-
-
-
-
-
 def uniform_cost_search(problem):
     """
     Search the node of least total cost first.
@@ -250,7 +244,7 @@ def uniform_cost_search(problem):
                 if not graph.has_node_been_explored(node): # TODO have to check if the state is already in the frontier?
                     fringe.push(node, node.path_cost)
 
-                # todo have to check that it isnt in the frontier with a higher path cost
+                # todo have to check that it isn't in the frontier with a higher path cost
 
 
 

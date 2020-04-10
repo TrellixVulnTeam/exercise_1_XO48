@@ -73,7 +73,8 @@ class BlokusCornersProblem(SearchProblem):
         :param state: a numpy array representing the current state of the board
         :return: False if any of the corners are still empty, otherwise True
         """
-        corner_values = [state[0, 0], state[0, -1], state[-1, 0], state[-1, -1]]
+        corner_values = [state.get_position(0, 0), state.get_position(0, -1), state.get_position(-1, 0),
+                         state.get_position(-1, -1)]
 
         if -1 in corner_values:
             return False
@@ -101,8 +102,13 @@ class BlokusCornersProblem(SearchProblem):
         This method returns the total cost of a particular sequence of actions.  The sequence must
         be composed of legal moves
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        num_of_tiles = 0
+        for move in actions:
+            num_of_tiles += move.piece.get_num_tiles()
+
+        return num_of_tiles
+
 
 
 def blokus_corners_heuristic(state, problem):
