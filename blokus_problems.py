@@ -1,7 +1,8 @@
 from board import Board
 from search import SearchProblem, ucs
 import util
-
+import numpy as np
+import math
 
 class BlokusFillProblem(SearchProblem):
     """
@@ -124,7 +125,68 @@ def blokus_corners_heuristic(state, problem):
     inadmissible or inconsistent heuristics may find optimal solutions, so be careful.
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    return max(how_many_corners_heuristic(state, problem), 0, min_distance_from_corners_heuristic(state))
+
+
+def how_many_corners_heuristic(state):
+    """
+    This is a heuristic which simply checks how many corners have not yet been filled and assumes the number of
+    unfilled corners is the quickest solution. A very optimistic heuristic.
+    :param state: the current state of the problem
+    :return: how many moves the heuristic estimates until the corners are filled
+    """
+    corner_values = [state.get_position(0, 0), state.get_position(0, -1), state.get_position(-1, 0),
+                     state.get_position(-1, -1)]
+
+    return corner_values.count(-1)
+
+
+def min_distance_from_corners_heuristic(state):
+    """
+    calculates the min number of tiles that would be used from each corner to the nearest signed tile
+    :param state: the state of the board
+    :return: the min number of tiles that would have to be used
+    """
+
+    # a list of indexes where tiles have been placed.
+    non_empty_tiles = np.argwhere(state >= 0)
+
+    # min number of tiles
+    min_tiles = 0
+
+    if state.get_position(0, 0) == -1:  # upper left corner
+        min_tiles += minimum_num_tiles(0, 0, non_empty_tiles)
+    if state.get_position(0, state.board_w - 1) == -1:  # upper right corner
+        min_tiles += minimum_num_tiles(0, state.board_w - 1, non_empty_tiles)
+    if state.get_position(state.board_h - 1, 0) == -1:  # lower left corner
+        min_tiles += minimum_num_tiles(state.board_h - 1, 0, non_empty_tiles)
+    if state.get_position(state.board_h - 1, state.board_w - 1) == -1:  # lower right corner
+        min_tiles += minimum_num_tiles(state.board_h - 1, state.board_w - 1, non_empty_tiles)
+
+    return min_tiles
+
+
+def minimum_num_tiles(x_corner, y_corner, non_zero_indices):
+    """
+    looks for the minimum number of tiles that would have to be signed between the given corner and all of the signed
+    tiles and returns the minumum required
+    :param x_corner: the x coordinate
+    :param y_corner: the y coordinate
+    :param non_zero_indices: an array of indices which have been used thus far
+    :return: the minimum number of tiles that would need to be used between the given corner and the closest signed tile
+    """
+
+    minimum = 0
+    for coordinates in non_zero_indices:
+        n = math.abs(x_corner - coordinates[0])
+        m = math.abs(y_corner - coordinates[1])
+
+        num_diagonal_tiles = n + m - math.gcd(n, m)
+        if minimum >= num_diagonal_tiles:
+            minimum = num_diagonal_tiles
+
+    return minimum
+
 
 
 class BlokusCoverProblem(SearchProblem):

@@ -94,7 +94,7 @@ class Node:
         self.path_cost = path_cost
 
     # todo how to compare nodes? Nodes are equal when they share state, parent, action, path cost, step cost? for the
-    #  purposes of UCS it may be wise to compare stateand cost and perhaps parent. When we want more complicated
+    #  purposes of UCS it may be wise to compare state and cost and perhaps parent. When we want more complicated
     # comparisons
 
     def compare(self, compare_to):
