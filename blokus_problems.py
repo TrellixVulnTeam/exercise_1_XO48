@@ -1,8 +1,8 @@
-from board import Board
+from board import Board, Move
 from search import SearchProblem, ucs
 import util
 import numpy as np
-import math
+
 
 class BlokusFillProblem(SearchProblem):
     """
@@ -39,7 +39,8 @@ class BlokusFillProblem(SearchProblem):
         """
         # Note that for the search problem, there is only one player - #0
         self.expanded = self.expanded + 1
-        return [(state.do_move(0, move), move, 1) for move in state.get_legal_moves(0)]
+        return [(state.do_move(0, move), move, 1) for move in
+                state.get_legal_moves(0)]
 
     def get_cost_of_actions(self, actions):
         """
@@ -50,6 +51,7 @@ class BlokusFillProblem(SearchProblem):
         """
         return len(actions)
 
+
 #####################################################
 # This portion is incomplete.  Time to write code!  #
 #####################################################
@@ -59,7 +61,7 @@ class BlokusCornersProblem(SearchProblem):
         self.board = Board(board_w, board_h, 1, piece_list, starting_point)
         self.expanded = 0
         "*** YOUR CODE HERE ***"
-        # todo if the starting position is not (0,0) rotate the board until it is?
+
 
     def get_start_state(self):
         """
@@ -74,7 +76,8 @@ class BlokusCornersProblem(SearchProblem):
         :param state: a numpy array representing the current state of the board
         :return: False if any of the corners are still empty, otherwise True
         """
-        corner_values = [state.get_position(0, 0), state.get_position(0, -1), state.get_position(-1, 0),
+        corner_values = [state.get_position(0, 0), state.get_position(0, -1),
+                         state.get_position(-1, 0),
                          state.get_position(-1, -1)]
 
         if -1 in corner_values:
@@ -89,12 +92,13 @@ class BlokusCornersProblem(SearchProblem):
         For a given state, this should return a list of triples,
         (successor, action, stepCost), where 'successor' is a
         successor to the current state, 'action' is the action
-        required to get there, and 'stepCost' is the incremental
+        required to get there, stepCostand '' is the incremental
         cost of expanding to that successor
         """
         # Note that for the search problem, there is only one player - #0
         self.expanded = self.expanded + 1
-        return [(state.do_move(0, move), move, move.piece.get_num_tiles()) for move in state.get_legal_moves(0)]
+        return [(state.do_move(0, move), move, move.piece.get_num_tiles()) for
+                move in state.get_legal_moves(0)]
 
     def get_cost_of_actions(self, actions):
         """
@@ -111,7 +115,6 @@ class BlokusCornersProblem(SearchProblem):
         return num_of_tiles
 
 
-
 def blokus_corners_heuristic(state, problem):
     """
     Your heuristic for the BlokusCornersProblem goes here.
@@ -124,76 +127,88 @@ def blokus_corners_heuristic(state, problem):
     your heuristic is *not* consistent, and probably not admissible!  On the other hand,
     inadmissible or inconsistent heuristics may find optimal solutions, so be careful.
     """
-    "*** YOUR CODE HERE ***"
-    return max(how_many_corners_heuristic(state, problem), 0, min_distance_from_corners_heuristic(state))
+    corners = [(0, 0), (state.board_w - 1, 0,), (0, state.board_h - 1),
+               (state.board_w - 1, state.board_h - 1)]
 
+    uncovered_corners = find_uncovered_targets(state, corners)
 
-def how_many_corners_heuristic(state):
-    """
-    This is a heuristic which simply checks how many corners have not yet been filled and assumes the number of
-    unfilled corners is the quickest solution. A very optimistic heuristic.
-    :param state: the current state of the problem
-    :return: how many moves the heuristic estimates until the corners are filled
-    """
-    corner_values = [state.get_position(0, 0), state.get_position(0, -1), state.get_position(-1, 0),
-                     state.get_position(-1, -1)]
+    if len(uncovered_corners) == 0:
+        return 0
 
-    return corner_values.count(-1)
+    unused_pieces = find_unused_pieces(state)
 
+    if len(unused_pieces) == 0:
+        return 10934875010193458109345
 
-def min_distance_from_corners_heuristic(state):
-    """
-    calculates the min number of tiles that would be used from each corner to the nearest signed tile
-    :param state: the state of the board
-    :return: the min number of tiles that would have to be used
-    """
+    min_tiles = find_size_of_smallest_piece(unused_pieces)
 
+    corners_left = len(uncovered_corners)
+    min_dist = min_distance_from_target_heuristic(state, uncovered_corners)
+    winnable = is_winnable_position(corners, state)
+    return max(0, corners_left, min_dist, min_tiles, winnable)
+
+def find_size_of_smallest_piece(pieces):
+    return min(piece.get_num_tiles() for piece in pieces )
+
+def min_distance_from_target_heuristic(state, uncovered_targets):
     # a list of indexes where tiles have been placed.
-    non_empty_tiles = np.argwhere(state >= 0)
+    non_empty_tiles = np.argwhere(state.state > -1)
 
-    # min number of tiles
-    min_tiles = 0
+    return min(min_distance_to_target(coordinate, non_empty_tiles)
+               for coordinate in uncovered_targets)
 
-    if state.get_position(0, 0) == -1:  # upper left corner
-        min_tiles += minimum_num_tiles(0, 0, non_empty_tiles)
-    if state.get_position(0, state.board_w - 1) == -1:  # upper right corner
-        min_tiles += minimum_num_tiles(0, state.board_w - 1, non_empty_tiles)
-    if state.get_position(state.board_h - 1, 0) == -1:  # lower left corner
-        min_tiles += minimum_num_tiles(state.board_h - 1, 0, non_empty_tiles)
-    if state.get_position(state.board_h - 1, state.board_w - 1) == -1:  # lower right corner
-        min_tiles += minimum_num_tiles(state.board_h - 1, state.board_w - 1, non_empty_tiles)
+def min_distance_to_target(target, non_zero_indices):
 
-    return min_tiles
+    if len(non_zero_indices) != 0:
+        return min(calculate_distance(coordinate, target)
+               for coordinate in non_zero_indices)
 
+    return 1
 
-def minimum_num_tiles(x_corner, y_corner, non_zero_indices):
+def winnable_position(target, state):
     """
-    looks for the minimum number of tiles that would have to be signed between the given corner and all of the signed
-    tiles and returns the minumum required
-    :param x_corner: the x coordinate
-    :param y_corner: the y coordinate
-    :param non_zero_indices: an array of indices which have been used thus far
-    :return: the minimum number of tiles that would need to be used between the given corner and the closest signed tile
+    try to rank whether we can win from a certain position. We check to see if the blocks surrounding a target point
+    have been filled in such a way as to make it impossible to win from the current position. Ie if the edges of the
+    target point have been covered.
+    :param targets: the targets which remain to be covered
+    :return: 0 if it is possible to win from the current position otherwise one
     """
+    # how to check all the surrounding blocks.
 
-    minimum = 0
-    for coordinates in non_zero_indices:
-        n = math.abs(x_corner - coordinates[0])
-        m = math.abs(y_corner - coordinates[1])
+    if target[0] + 1 < state.board_w:
+        if state.get_position(target[1], target[0] + 1) != -1:  # the tile above
+            return False
+    if target[0] - 1 >= 0:
+        if state.get_position(target[1], target[0] - 1) != -1: # the tile below
+            return False
+    if target[1] + 1 < state.board_h: # the tile to the right
+        if state.get_position(target[1] + 1, target[0]) != -1:
+            return False
+    if target[1] - 1 >= 0: # the tile to the left
+        if state.get_position(target[1] - 1, target[0]) != -1:
+            return False
 
-        num_diagonal_tiles = n + m - math.gcd(n, m)
-        if minimum >= num_diagonal_tiles:
-            minimum = num_diagonal_tiles
+    return True
 
-    return minimum
+def is_winnable_position(targets, state):
+    bad_state_const = 10934875010193458109345
+    for target in targets:
+        if not winnable_position(target, state):
+            return bad_state_const
 
+    return 0
+
+
+def calculate_distance(coordinate, target):
+    return max(abs(target[0] - coordinate[0]), abs(target[1] - coordinate[1])) - 1
 
 
 class BlokusCoverProblem(SearchProblem):
-    def __init__(self, board_w, board_h, piece_list, starting_point=(0, 0), targets=[(0, 0)]):
+    def __init__(self, board_w, board_h, piece_list, starting_point=(0, 0),
+                 targets=[(0, 0)]):
+        self.board = Board(board_w, board_h, 1, piece_list, starting_point)
         self.targets = targets.copy()
         self.expanded = 0
-        "*** YOUR CODE HERE ***"
 
     def get_start_state(self):
         """
@@ -202,8 +217,12 @@ class BlokusCoverProblem(SearchProblem):
         return self.board
 
     def is_goal_state(self, state):
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        for target in self.targets:
+            state_x = state.get_position(target[1], target[0])
+
+            if state_x == -1:
+                return False
+        return True
 
     def get_successors(self, state):
         """
@@ -217,7 +236,8 @@ class BlokusCoverProblem(SearchProblem):
         """
         # Note that for the search problem, there is only one player - #0
         self.expanded = self.expanded + 1
-        return [(state.do_move(0, move), move, move.piece.get_num_tiles()) for move in state.get_legal_moves(0)]
+        return [(state.do_move(0, move), move, move.piece.get_num_tiles()) for
+                move in state.get_legal_moves(0)]
 
     def get_cost_of_actions(self, actions):
         """
@@ -226,13 +246,38 @@ class BlokusCoverProblem(SearchProblem):
         This method returns the total cost of a particular sequence of actions.  The sequence must
         be composed of legal moves
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        num_of_tiles = 0
+        for move in actions:
+            num_of_tiles += move.piece.get_num_tiles()
+
+        return num_of_tiles
 
 
 def blokus_cover_heuristic(state, problem):
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    uncovered_targets = find_uncovered_targets(state, problem.targets)
+    if len(uncovered_targets) == 0:
+        return 0
+
+    unused_pieces = find_unused_pieces(state)
+
+    if len(unused_pieces) == 0:
+        return 10934875010193458109345
+
+    min_tiles = find_size_of_smallest_piece(unused_pieces)
+    min_dist = min_distance_from_target_heuristic(state, uncovered_targets)
+    winnable = is_winnable_position(uncovered_targets, state)
+    return max(0, len(uncovered_targets), min_dist, min_tiles, winnable)
+
+
+def num_of_uncovered_targets(state, problem):
+    num_points = 0
+    for target in problem.targets:
+        if state.get_position(target[1], target[0]) == -1:
+            num_points += 1
+
+    return num_points
+
 
 
 class ClosestLocationSearch:
@@ -241,16 +286,43 @@ class ClosestLocationSearch:
     but the objective is speed, not optimality.
     """
 
-    def __init__(self, board_w, board_h, piece_list, starting_point=(0, 0), targets=(0, 0)):
+    def __init__(self, board_w, board_h, piece_list, starting_point=(0, 0),
+                 targets=(0, 0)):
         self.expanded = 0
         self.targets = targets.copy()
         "*** YOUR CODE HERE ***"
+        self.starting_point = starting_point
+        self.board_w = board_w
+        self.board_h = board_h
+        self.board = Board(board_w, board_h, 1, piece_list, starting_point)
 
     def get_start_state(self):
         """
         Returns the start state for the search problem
         """
         return self.board
+
+    def is_goal_state(self, state, target):
+
+        if state.state[target[0], target[1]] == -1:
+            return False
+
+        return True
+
+    def get_successors(self, state):
+        """
+        state: Search state
+
+        For a given state, this should return a list of triples,
+        (successor, action, stepCost), where 'successor' is a
+        successor to the current state, 'action' is the action
+        required to get there, stepCostand '' is the incremental
+        cost of expanding to that successor
+        """
+        # Note that for the search problem, there is only one player - #0
+        self.expanded = self.expanded + 1
+        return [(state.do_move(0, move), move, move.piece.get_num_tiles()) for
+                move in state.get_legal_moves(0)]
 
     def solve(self):
         """
@@ -271,9 +343,77 @@ class ClosestLocationSearch:
 
         return backtrace
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
 
+        backtrace = []
+        current_state = self.board.__copy__()
+
+        self.targets.sort(key=lambda x: calculate_distance(self.starting_point, x))
+
+        for target in self.targets:
+
+            actions = self.greedy_best_first_search(current_state, target)
+
+            for action in actions:
+                current_state = current_state.do_move(0, action)
+                backtrace.append(action)
+
+        return backtrace
+
+    def greedy_best_first_search(self, current_state, target):
+
+        # create the root
+        root = current_state
+        root_node = Node(root, [])
+
+        # set up the frontier and visited
+        frontier = util.PriorityQueueWithFunction(lambda x: blokus_cover_heuristic(x.state, self))
+        visited = set()
+        frontier.push(root_node)
+
+        while not frontier.isEmpty():
+
+            current_node = frontier.pop()
+
+            if self.is_goal_state(current_node.state, target):
+                return current_node.get_actions()
+
+            if current_node.state not in visited:
+                visited.add(current_node.state)
+
+                for triple in self.get_successors(current_node.state):
+                    successor, action, step_cost = triple
+                    node = Node(successor, current_node.actions + [action])
+                    frontier.push(node)
+
+        return []
+
+class Node:
+
+    def __init__(self, state, actions):
+        self.state = state  # the nodes state
+        #  self.parent = parent  # the nodes parent node or state?
+          # a string representation of the boards state
+        self.actions = actions
+
+
+    def get_actions(self):
+        return self.actions
+
+
+def find_unused_pieces(state):
+    unused_pieces = set()
+    for piece in state.piece_list:
+        if state.pieces[0, state.piece_list.pieces.index(piece)]:  # unused piece
+            unused_pieces.add(piece)
+    return unused_pieces
+
+
+def find_uncovered_targets(state, targets):
+    uncovered_targets = set()
+    for target in targets:
+        if state.get_position(target[1], target[0]) == -1:  # uncovered
+            uncovered_targets.add(target)
+    return uncovered_targets
 
 
 class MiniContestSearch:
@@ -281,9 +421,14 @@ class MiniContestSearch:
     Implement your contest entry here
     """
 
-    def __init__(self, board_w, board_h, piece_list, starting_point=(0, 0), targets=(0, 0)):
+    def __init__(self, board_w, board_h, piece_list, starting_point=(0, 0),
+                 targets=(0, 0)):
         self.targets = targets.copy()
-        "*** YOUR CODE HERE ***"
+        self.expanded = 0
+        self.starting_point = starting_point
+        self.board_w = board_w
+        self.board_h = board_h
+        self.board = Board(board_w, board_h, 1, piece_list, starting_point)
 
     def get_start_state(self):
         """
@@ -291,7 +436,56 @@ class MiniContestSearch:
         """
         return self.board
 
+    def get_successors(self, state):
+        """
+        state: Search state
+
+        For a given state, this should return a list of triples,
+        (successor, action, stepCost), where 'successor' is a
+        successor to the current state, 'action' is the action
+        required to get there, stepCostand '' is the incremental
+        cost of expanding to that successor
+        """
+        # Note that for the search problem, there is only one player - #0
+        self.expanded = self.expanded + 1
+        return [(state.do_move(0, move), move, move.piece.get_num_tiles()) for
+                move in state.get_legal_moves(0)]
+
+    def is_goal_state(self, state):
+
+        for target in self.targets:
+            if state.state[target[0], target[1]] == -1:
+                return False
+
+        return True
+
     def solve(self):
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        # run greedy best first search
+        return self.greedy_best_first_search()
 
+    def greedy_best_first_search(self):
+
+        root = self.get_start_state()
+        root_node = Node(root, [])
+
+        # set up the frontier and visited
+        frontier = util.PriorityQueueWithFunction(lambda x: blokus_cover_heuristic(x.state, self))
+        visited = set()
+        frontier.push(root_node)
+
+        while not frontier.isEmpty():
+
+            current_node = frontier.pop()
+
+            if self.is_goal_state(current_node.state):
+                return current_node.get_actions()
+
+            if current_node.state not in visited:
+                visited.add(current_node.state)
+
+                for triple in self.get_successors(current_node.state):
+                    successor, action, step_cost = triple
+                    frontier.push(Node(successor, current_node.actions + [action]))
+
+        return []
